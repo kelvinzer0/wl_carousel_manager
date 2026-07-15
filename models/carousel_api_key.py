@@ -58,21 +58,37 @@ class CarouselApiKey(models.Model):
         ('unique_key', 'UNIQUE(key)', 'API Key must be unique.'),
     ]
 
+    @api.model_create_multi
+    def create(self, vals_list):
+        """Auto-generate API key when record created via UI form.
+        
+        The form view has key field as readonly, so users can't type it.
+        This override generates a secure random key automatically on create
+        if one isn't already provided (e.g. by generate_key() method).
+        """
+        for vals in vals_list:
+            if not vals.get('key'):
+                raw = secrets.token_urlsafe(32)
+                vals['key'] = f'{API_KEY_PREFIX}{raw}'
+        records = super().create(vals_list)
+        for rec in records:
+            _logger.info('Carousel API key created: %s (scope=%s, id=%d)',
+                         rec.name, rec.scope, rec.id)
+        return records
+
     @api.model
     def generate_key(self, name, scope=SCOPE_WRITE, expires_at=None):
-        """Generate a new API key. Returns the key string (only shown once)."""
-        # Generate cryptographically secure random key
-        raw = secrets.token_urlsafe(32)
-        key = f'{API_KEY_PREFIX}{raw}'
+        """Generate a new API key. Returns (record, key_string).
+        
+        Used by REST API POST /carousel/api/keys.
+        The actual key generation happens in create() override.
+        """
         record = self.create({
             'name': name,
-            'key': key,
             'scope': scope,
             'expires_at': expires_at,
         })
-        _logger.info('Carousel API key created: %s (scope=%s, id=%d)',
-                     name, scope, record.id)
-        return record, key
+        return record, record.key
 
     def revoke(self):
         """Revoke (deactivate) API keys."""
