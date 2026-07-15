@@ -7,12 +7,10 @@ from odoo.http import request, Response
 
 _logger = logging.getLogger(__name__)
 
-# Scope hierarchy for permission checks
 SCOPE_LEVELS = {'read': 1, 'write': 2, 'admin': 3}
 
 
 def _json_response(data, status=200):
-    """Helper: return JSON response with proper headers."""
     return Response(
         json.dumps(data, default=str),
         status=status,
@@ -26,35 +24,54 @@ def _json_response(data, status=200):
 
 
 def _error(message, status=400, code=None):
-    """Helper: return error JSON response."""
     return _json_response({'error': message, 'code': code or status}, status)
 
 
 def _authenticate(required_scope='read'):
-    """Authenticate request via Bearer token.
-    
-    Returns tuple: (api_key_record, error_response)
-    If authentication succeeds, error_response is None.
-    """
     auth_header = request.httprequest.headers.get('Authorization', '')
     if not auth_header:
         return None, _error('Missing Authorization header', 401)
-    
     key = auth_header.replace('Bearer ', '').strip()
     if not key:
         return None, _error('Empty API key', 401)
-    
     api_key = request.env['carousel.api.key'].sudo().validate_key(
         key, required_scope=required_scope
     )
     if not api_key:
         return None, _error('Invalid or expired API key', 401)
-    
     return api_key, None
 
 
+def _slide_to_dict(slide):
+    """Serialize wl.splide.slide to API dict.
+    
+    Maps wl.splide.slide fields to API-friendly names:
+      name → title
+      desktop_media → image_desktop (base64)
+      mobile_media → image_mobile (base64)
+    """
+    base_url = request.env['ir.config_parameter'].sudo().get_param(
+        'web.base.url', '')
+    return {
+        'id': slide.id,
+        'title': slide.name or '',
+        'link_url': slide.link_url or '',
+        'link_new_tab': slide.link_new_tab,
+        'sequence': slide.sequence,
+        'active': slide.active,
+        'image_desktop_url': f'{base_url}{slide.desktop_media_url}' if slide.desktop_media_url else '',
+        'image_mobile_url': f'{base_url}{slide.mobile_media_url}' if slide.mobile_media_url else '',
+        'desktop_media_type': slide.desktop_media_type or 'image',
+        'mobile_media_type': slide.mobile_media_type or 'image',
+        'desktop_media_filename': slide.desktop_media_filename or '',
+        'mobile_media_filename': slide.mobile_media_filename or '',
+        'create_date': slide.create_date.isoformat() if slide.create_date else None,
+        'write_date': slide.write_date.isoformat() if slide.write_date else None,
+    }
+
+
 class CarouselAPI(http.Controller):
-    """REST API for carousel slide management."""
+    """REST API for wl.splide.slide management."""
 
     # ================================================================
     # OPTIONS (CORS preflight)
@@ -83,10 +100,10 @@ class CarouselAPI(http.Controller):
         if only_active:
             domain = [('active', '=', True)]
 
-        slides = request.env['carousel.slide'].sudo().search(domain)
+        slides = request.env['wl.splide.slide'].sudo().search(domain)
         return _json_response({
             'count': len(slides),
-            'slides': [s.to_dict() for s in slides],
+            'slides': [_slide_to_dict(s) for s in slides],
         })
 
     # ================================================================
@@ -99,11 +116,11 @@ class CarouselAPI(http.Controller):
         if err:
             return err
 
-        slide = request.env['carousel.slide'].sudo().browse(slide_id)
+        slide = request.env['wl.splide.slide'].sudo().browse(slide_id)
         if not slide.exists():
             return _error('Slide not found', 404)
 
-        return _json_response(slide.to_dict())
+        return _json_response(_slide_to_dict(slide))
 
     # ================================================================
     # POST /carousel/api/slides — create new slide
@@ -120,31 +137,30 @@ class CarouselAPI(http.Controller):
         except (json.JSONDecodeError, ValueError):
             return _error('Invalid JSON body', 400)
 
-        # Validate required fields
         if not body.get('title'):
             return _error('Field "title" is required', 400)
         if not body.get('image_desktop'):
             return _error('Field "image_desktop" is required (base64 string)', 400)
+        if not body.get('image_mobile'):
+            return _error('Field "image_mobile" is required (base64 string)', 400)
 
-        # Build values
+        # Map API fields → wl.splide.slide fields
         vals = {
-            'title': body['title'],
-            'subtitle': body.get('subtitle', ''),
-            'cta_text': body.get('cta_text', 'Pesan Sekarang'),
-            'link_url': body.get('link_url', '/shop'),
-            'image_desktop': body['image_desktop'],
-            'image_mobile': body.get('image_mobile', False),
+            'name': body['title'],
+            'desktop_media': body['image_desktop'],
+            'mobile_media': body['image_mobile'],
+            'desktop_media_filename': body.get('desktop_media_filename', 'desktop.jpg'),
+            'mobile_media_filename': body.get('mobile_media_filename', 'mobile.jpg'),
+            'link_url': body.get('link_url', ''),
+            'link_new_tab': body.get('link_new_tab', True),
             'sequence': body.get('sequence', 10),
             'active': body.get('active', True),
-            'start_date': body.get('start_date', False),
-            'end_date': body.get('end_date', False),
-            'api_key_id': api_key.id,
         }
 
-        slide = request.env['carousel.slide'].sudo().create(vals)
-        _logger.info('Slide created via API: id=%d title=%s by key=%s',
-                     slide.id, slide.title, api_key.name)
-        return _json_response(slide.to_dict(), 201)
+        slide = request.env['wl.splide.slide'].sudo().create(vals)
+        _logger.info('Slide created via API: id=%d name=%s by key=%s',
+                     slide.id, slide.name, api_key.name)
+        return _json_response(_slide_to_dict(slide), 201)
 
     # ================================================================
     # PUT /carousel/api/slides/<id> — update slide (mobile & desktop)
@@ -156,7 +172,7 @@ class CarouselAPI(http.Controller):
         if err:
             return err
 
-        slide = request.env['carousel.slide'].sudo().browse(slide_id)
+        slide = request.env['wl.splide.slide'].sudo().browse(slide_id)
         if not slide.exists():
             return _error('Slide not found', 404)
 
@@ -165,25 +181,31 @@ class CarouselAPI(http.Controller):
         except (json.JSONDecodeError, ValueError):
             return _error('Invalid JSON body', 400)
 
-        # Build update values — only update provided fields
-        allowed_fields = [
-            'title', 'subtitle', 'cta_text', 'link_url',
-            'image_desktop', 'image_mobile',
-            'sequence', 'active', 'start_date', 'end_date',
-        ]
+        # Map API fields → wl.splide.slide fields
+        field_map = {
+            'title': 'name',
+            'image_desktop': 'desktop_media',
+            'image_mobile': 'mobile_media',
+            'desktop_media_filename': 'desktop_media_filename',
+            'mobile_media_filename': 'mobile_media_filename',
+            'link_url': 'link_url',
+            'link_new_tab': 'link_new_tab',
+            'sequence': 'sequence',
+            'active': 'active',
+        }
+
         vals = {}
-        for field in allowed_fields:
-            if field in body:
-                vals[field] = body[field]
+        for api_field, model_field in field_map.items():
+            if api_field in body:
+                vals[model_field] = body[api_field]
 
         if not vals:
             return _error('No fields to update', 400)
 
-        vals['api_key_id'] = api_key.id
         slide.sudo().write(vals)
         _logger.info('Slide updated via API: id=%d fields=%s by key=%s',
                      slide.id, list(vals.keys()), api_key.name)
-        return _json_response(slide.to_dict())
+        return _json_response(_slide_to_dict(slide))
 
     # ================================================================
     # DELETE /carousel/api/slides/<id> — delete slide
@@ -195,41 +217,15 @@ class CarouselAPI(http.Controller):
         if err:
             return err
 
-        slide = request.env['carousel.slide'].sudo().browse(slide_id)
+        slide = request.env['wl.splide.slide'].sudo().browse(slide_id)
         if not slide.exists():
             return _error('Slide not found', 404)
 
-        title = slide.title
+        name = slide.name
         slide.sudo().unlink()
-        _logger.info('Slide deleted via API: id=%d title=%s by key=%s',
-                     slide_id, title, api_key.name)
+        _logger.info('Slide deleted via API: id=%d name=%s by key=%s',
+                     slide_id, name, api_key.name)
         return _json_response({'deleted': True, 'id': slide_id})
-
-    # ================================================================
-    # GET /carousel/image/<id>/<variant> — serve slide image
-    # ================================================================
-    @http.route('/carousel/image/<int:slide_id>/<string:variant>', type='http',
-                auth='public', methods=['GET'], csrf=False)
-    def slide_image(self, slide_id, variant, **kw):
-        """Serve slide image (desktop or mobile). Public, no auth needed."""
-        slide = request.env['carousel.slide'].sudo().browse(slide_id)
-        if not slide.exists():
-            return _error('Slide not found', 404)
-
-        if variant == 'desktop':
-            image = slide.image_desktop
-        elif variant == 'mobile':
-            image = slide.image_mobile or slide.image_desktop  # fallback to desktop
-        else:
-            return _error('Invalid variant. Use "desktop" or "mobile".', 400)
-
-        if not image:
-            return _error('No image available', 404)
-
-        # image is base64 string in Odoo
-        image_data = base64.b64decode(image)
-        return Response(image_data, status=200, content_type='image/jpeg',
-                        headers=[('Cache-Control', 'public, max-age=3600')])
 
     # ================================================================
     # POST /carousel/api/keys — generate new API key (admin only)
@@ -256,7 +252,7 @@ class CarouselAPI(http.Controller):
         )
 
         result = record.to_dict()
-        result['key'] = key_string  # Only returned ONCE at creation
+        result['key'] = key_string
         _logger.info('API key generated via API: %s by key=%s',
                      record.name, api_key.name)
         return _json_response(result, 201)

@@ -8,7 +8,7 @@
         <field name="name">carousel.api.key.list</field>
         <field name="model">carousel.api.key</field>
         <field name="arch" type="xml">
-            <list string="Carousel API Keys">
+            <tree string="Carousel API Keys">
                 <field name="name"/>
                 <field name="key_preview"/>
                 <field name="scope" widget="badge"
@@ -22,7 +22,7 @@
                 <button name="revoke" type="object" string="Revoke"
                         class="btn-danger" icon="fa-ban"
                         invisible="not active"/>
-            </list>
+            </tree>
         </field>
     </record>
 

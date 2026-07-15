@@ -1,3 +1,2 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-carousel_slide_user,carousel.slide user,model_carousel_slide,base.group_system,1,1,1,1
-carousel_api_key_user,carousel.api.key user,model_carousel_api_key,base.group_system,1,1,1,1
+access_carousel_api_key_user,carousel.api.key access,wl_carousel_manager.model_carousel_api_key,base.group_system,1,1,1,1

@@ -44,6 +44,15 @@ class CarouselApiKey(models.Model):
     created_by = fields.Many2one('res.users', string='Created By',
                                  default=lambda self: self.env.user, readonly=True)
     create_date = fields.Datetime(string='Created', readonly=True)
+    key_preview = fields.Char(string='Key Preview', compute='_compute_key_preview')
+
+    @api.depends('key')
+    def _compute_key_preview(self):
+        for rec in self:
+            if rec.key and len(rec.key) > 16:
+                rec.key_preview = f'{rec.key[:12]}...{rec.key[-4:]}'
+            else:
+                rec.key_preview = ''
 
     _sql_constraints = [
         ('unique_key', 'UNIQUE(key)', 'API Key must be unique.'),
