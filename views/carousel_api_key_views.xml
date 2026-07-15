@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================================================ -->
+    <!-- LIST VIEW: API Keys                                              -->
+    <!-- ================================================================ -->
+    <record id="carousel_api_key_list" model="ir.ui.view">
+        <field name="name">carousel.api.key.list</field>
+        <field name="model">carousel.api.key</field>
+        <field name="arch" type="xml">
+            <list string="Carousel API Keys">
+                <field name="name"/>
+                <field name="key_preview"/>
+                <field name="scope" widget="badge"
+                       decoration-info="scope == 'read'"
+                       decoration-warning="scope == 'write'"
+                       decoration-danger="scope == 'admin'"/>
+                <field name="active" widget="boolean_toggle"/>
+                <field name="use_count"/>
+                <field name="last_used"/>
+                <field name="expires_at"/>
+                <button name="revoke" type="object" string="Revoke"
+                        class="btn-danger" icon="fa-ban"
+                        invisible="not active"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ================================================================ -->
+    <!-- FORM VIEW: API Key                                               -->
+    <!-- ================================================================ -->
+    <record id="carousel_api_key_form" model="ir.ui.view">
+        <field name="name">carousel.api.key.form</field>
+        <field name="model">carousel.api.key</field>
+        <field name="arch" type="xml">
+            <form string="API Key">
+                <sheet>
+                    <div class="alert alert-warning" role="alert" invisible="key">
+                        Save this record to generate the API key. The full key
+                        will only be shown once — store it securely.
+                    </div>
+                    <div class="alert alert-info" role="alert" invisible="not key">
+                        <strong>API Key (copy now — shown only once):</strong>
+                        <br/>
+                        <code style="font-size: 1.1em; word-break: break-all;">
+                            <field name="key" readonly="1"/>
+                        </code>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="name" placeholder="e.g. n8n workflow, Mobile app"/>
+                            <field name="scope"/>
+                            <field name="active"/>
+                        </group>
+                        <group>
+                            <field name="expires_at"/>
+                            <field name="use_count" readonly="1"/>
+                            <field name="last_used" readonly="1"/>
+                            <field name="created_by" readonly="1"/>
+                            <field name="create_date" readonly="1"/>
+                        </group>
+                    </group>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="object"
+                                name="revoke" icon="fa-ban" string="Revoke"
+                                invisible="not active" confirm="Are you sure?"/>
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ================================================================ -->
+    <!-- ACTION: API Keys                                                 -->
+    <!-- ================================================================ -->
+    <record id="carousel_api_key_action" model="ir.actions.act_window">
+        <field name="name">Carousel API Keys</field>
+        <field name="res_model">carousel.api.key</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Generate a new API key
+            </p>
+            <p>
+                API keys allow external systems (n8n, mobile apps) to
+                manage carousel slides via the REST API.
+            </p>
+        </field>
+    </record>
+
+</odoo>

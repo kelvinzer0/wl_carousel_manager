@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- Top-level menu: Carousel Manager -->
+    <menuitem id="menu_carousel_root"
+              name="Carousel"
+              web_icon="wl_carousel_manager,static/description/icon.png"
+              sequence="80"/>
+
+    <!-- Submenu: Slides -->
+    <menuitem id="menu_carousel_slides"
+              name="Slides"
+              parent="menu_carousel_root"
+              action="carousel_slide_action"
+              sequence="10"/>
+
+    <!-- Submenu: API Keys -->
+    <menuitem id="menu_carousel_api_keys"
+              name="API Keys"
+              parent="menu_carousel_root"
+              action="carousel_api_key_action"
+              sequence="20"/>
+
+    <!-- Submenu: API Docs (link to OpenAPI spec) -->
+    <menuitem id="menu_carousel_api_docs"
+              name="API Documentation"
+              parent="menu_carousel_root"
+              action="action_carousel_api_docs"
+              sequence="30"/>
+
+    <!-- Action: Open OpenAPI spec URL -->
+    <record id="action_carousel_api_docs" model="ir.actions.act_url">
+        <field name="name">OpenAPI Spec</field>
+        <field name="url">/carousel/openapi.json</field>
+        <field name="target">new</field>
+    </record>
+
+</odoo>

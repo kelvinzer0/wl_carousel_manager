@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ================================================================ -->
+    <!-- LIST VIEW: Carousel Slides                                       -->
+    <!-- ================================================================ -->
+    <record id="carousel_slide_list" model="ir.ui.view">
+        <field name="name">carousel.slide.list</field>
+        <field name="model">carousel.slide</field>
+        <field name="arch" type="xml">
+            <list string="Carousel Slides" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="image_desktop" widget="image" class="oe_avatar" options="{'size': [60, 20]}"/>
+                <field name="title"/>
+                <field name="subtitle"/>
+                <field name="link_url"/>
+                <field name="active" widget="boolean_toggle"/>
+                <field name="start_date"/>
+                <field name="end_date"/>
+                <field name="write_date" readonly="1"/>
+            </list>
+        </field>
+    </record>
+
+    <!-- ================================================================ -->
+    <!-- FORM VIEW: Carousel Slide                                        -->
+    <!-- ================================================================ -->
+    <record id="carousel_slide_form" model="ir.ui.view">
+        <field name="name">carousel.slide.form</field>
+        <field name="model">carousel.slide</field>
+        <field name="arch" type="xml">
+            <form string="Carousel Slide">
+                <header>
+                    <button name="toggle_active" type="object" string="Archive" class="oe_highlight"
+                            invisible="not active"/>
+                    <button name="toggle_active" type="object" string="Unarchive"
+                            invisible="active"/>
+                </header>
+                <sheet>
+                    <widget name="web_ribbon" title="Archived" bg_color="text-bg-danger"
+                            invisible="active"/>
+                    <div class="oe_button_box" name="button_box">
+                        <button class="oe_stat_button" type="action"
+                                name="%(carousel_api_key_list)d"
+                                icon="fa-key" string="API Keys"
+                                invisible="not api_key_id"/>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="title"/>
+                            <field name="subtitle"/>
+                            <field name="cta_text"/>
+                            <field name="link_url"/>
+                        </group>
+                        <group>
+                            <field name="sequence"/>
+                            <field name="active"/>
+                            <field name="start_date"/>
+                            <field name="end_date"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Images">
+                            <group>
+                                <group string="Desktop Image (1920×600)">
+                                    <field name="image_desktop" widget="image"
+                                           options="{'size': [480, 150], 'preview_image': 'image_desktop'}"/>
+                                </group>
+                                <group string="Mobile Image (750×800, optional)">
+                                    <field name="image_mobile" widget="image"
+                                           options="{'size': [187, 200], 'preview_image': 'image_mobile'}"/>
+                                </group>
+                            </group>
+                        </page>
+                        <page string="API Info" invisible="not api_key_id">
+                            <group>
+                                <field name="api_key_id" readonly="1"/>
+                                <field name="create_date" readonly="1"/>
+                                <field name="write_date" readonly="1"/>
+                            </group>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ================================================================ -->
+    <!-- ACTION: Carousel Slides                                          -->
+    <!-- ================================================================ -->
+    <record id="carousel_slide_action" model="ir.actions.act_window">
+        <field name="name">Carousel Slides</field>
+        <field name="res_model">carousel.slide</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Create a new carousel slide
+            </p>
+        </field>
+    </record>
+
+</odoo>
